@@ -1,0 +1,130 @@
+version: "3"
+networks:
+    frontend:
+        driver: bridge
+        ipam:
+          driver: default
+          config:
+            - subnet: 172.22.0.0/24
+    backend:
+        driver: bridge
+        ipam:
+          driver: default
+          config:
+            - subnet: 172.23.0.0/24
+services:
+    php:
+        build:
+            args:
+                ALPINE_REPOSITORIES: ${ALPINE_REPOSITORIES}
+                PHP_VERSION: ${PHP_VERSION}
+                PHP_REDIS_VERSION: ${PHP_REDIS_VERSION}
+                PHP_SWOOLE_VERSION: ${PHP_SWOOLE_VERSION}
+            context: ./config/php
+        cap_add:
+            - SYS_PTRACE
+        container_name: php
+        environment:
+            TZ: ${TZ}
+        networks:
+            frontend:
+                ipv4_address: 172.22.0.2
+            backend:
+                ipv4_address: 172.23.0.2
+        ports:
+            - "${PHP_HOST_PORT}:9000"
+        restart: always
+        volumes:
+            - ${SRC_DIR}:/var/www/html/:rw
+            - ${PHP_CONF_FILE}:/usr/local/etc/php/php.ini:ro
+            - ${PHP_FPM_CONF_FILE}:/usr/local/etc/php/php-fpm.conf:ro
+            - ${PHP_LOG_DIR}:/var/log/php/:rw
+        extra_hosts:
+            - ${HOSTS}:172.22.0.3
+
+    nginx:
+        build:
+            args:
+                NGINX_VERSION: ${NGINX_VERSION}
+            context: ./config/nginx
+        container_name: nginx
+        depends_on:
+            - php
+        environment:
+            TZ: ${TZ}
+        networks:
+            frontend:
+                ipv4_address: 172.22.0.3
+        ports:
+            - "${NGINX_HTTP_HOST_PORT}:80"
+            - "${NGINX_HTTPS_HOST_PORT}:443"
+        restart: always
+        volumes:
+            - ${NGINX_CONFD_DIR}:/etc/nginx/conf.d/:ro
+            - ${NGINX_CONF_FILE}:/etc/nginx/nginx.conf:ro
+            - ${NGINX_LOG_DIR}:/var/log/nginx/:rw
+
+    mysql:
+        image: mysql:${MYSQL_VERSION}
+        container_name: mysql
+        environment:
+            TZ: ${TZ}
+            MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+        networks:
+            backend:
+                ipv4_address: 172.23.0.3
+        ports:
+            - "${MYSQL_HOST_PORT}:3306"
+        restart: always
+        volumes:
+            - ${MYSQL_CONF_FILE}:/etc/mysql/conf.d/mysql.conf:ro
+            - ${MYSQL_DATA_DIR}:/var/lib/mysql/:rw
+
+    redis:
+        image: redis:${REDIS_VERSION}
+        container_name: redis
+        environment:
+            TZ: ${TZ}
+        entrypoint: ["redis-server", "/etc/redis.conf"]
+        networks:
+            backend:
+                ipv4_address: 172.23.0.4
+        ports:
+            - "${REDIS_HOST_PORT}:6379"
+        restart: always
+        volumes:
+            - ${REDIS_CONF_FILE}:/etc/redis.conf:ro
+
+    rabbitmq:
+        #容器名称
+        container_name: rabbitmq
+        #镜像名称
+        image: rabbitmq:management
+        #总是重启后启动
+        restart: always
+        #端口映射
+        ports:
+            - 5672:5672
+            - 15672:15672
+        #挂载
+        volumes:
+            - ${REBBITMQ_DATA_DIR}:/var/lib/rabbitmq # #挂载 RabbitMQ数据
+            - ${REBBITMQ_LOG_DIR}:/var/log/rabbitmq #挂载 RabbitMQ日志
+        #环境变量
+        environment:
+            - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
+            - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS}
+
+    # phpmyadmin:
+    #     image: phpmyadmin/phpmyadmin:latest
+    #     container_name: phpmyadmin
+    #     ports:
+    #       - "${PHPMYADMIN_HOST_PORT}:80"
+    #     volumes:
+    #           - /sessions
+    #     networks:
+    #         backend:
+    #             ipv4_address: 172.23.0.5
+    #     environment:
+    #       PMA_ARBITRARY: "${PMA_ARBITRARY}"
+    #       TZ: "$TZ"

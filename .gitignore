@@ -1,0 +1,17 @@
+# Golang
+golang/bin
+golang/pkg
+golang/src/.vscode/
+golang/src/.idea/
+*go.mod
+*go.sum
+*vendor/
+golang/src/github.com/
+golang/src/gopkg.in/
+.DS_Store
+*.idea
+*db/
+*.vscode
+
+docker-workspace/data
+docker-workspace/log
