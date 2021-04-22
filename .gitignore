@@ -6,6 +6,7 @@ golang/pkg
 *vendor/
 golang/src/github.com/
 golang/src/gopkg.in/
+golang/src/gorobbs/
 
 # Config
 .DS_Store
