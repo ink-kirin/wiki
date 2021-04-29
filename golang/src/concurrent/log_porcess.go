@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
@@ -36,11 +37,15 @@ type LogProcess struct {
 }
 
 type ReadFromFile struct {
-	path string
+	path  string
+	inode uint64
+	fd    *os.File
 }
 
 type WriteToInfluxDB struct {
-	influxDBDsn string
+	influxToken string
+	batch       uint16
+	retry       uint8
 }
 
 // 日志参数
@@ -72,6 +77,31 @@ type Monitor struct {
 	startTime time.Time
 	data      SystemInfo
 	tpsSli    []int
+}
+
+func NewReader(path string) (Reader, error) {
+	var stat syscall.Stat_t
+	if err := syscall.Stat(path, &stat); err != nil {
+		return nil, err
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ReadFromFile{
+		inode: stat.Ino,
+		fd:    f,
+		path:  path,
+	}, nil
+}
+
+func NewWriter(influxDsn string) Writer {
+	return &WriteToInfluxDB{
+		batch:       50,
+		retry:       3,
+		influxToken: "xcQhIN_le_PbmjljLzX_F7ok-37HPe2w6QYN6RmX9KMrij7Y0fjjf0oom5JwVZy5djrJEAxVj8wt_7p9CXjXqA==",
+	}
 }
 
 func (m *Monitor) start(lp *LogProcess) {
@@ -114,26 +144,40 @@ func (m *Monitor) start(lp *LogProcess) {
 
 // 打开
 func (r *ReadFromFile) Read(rc chan []byte) {
-	// 打开文件
-	l, err := os.Open(r.path)
-	if err != nil {
-		panic(fmt.Sprintf("open file err:%s", err.Error()))
-	}
-	// 从文件末尾开始逐行读取
-	_, err = l.Seek(0, 2) // 偏移量移至末尾
-	if err != nil {
-		panic(fmt.Sprintf("Seek err: %s", err.Error()))
-	}
+	defer close(rc)
+	var stat syscall.Stat_t
 
-	rd := bufio.NewReader(l)
+	r.fd.Seek(0, 2) // seek 到末尾
+	bf := bufio.NewReader(r.fd)
 	for {
 		// 需要优化分割日志文件读取
-		line, err := rd.ReadBytes('\n')
+		line, err := bf.ReadBytes('\n')
 		if err == io.EOF {
-			time.Sleep(500 * time.Millisecond)
+			if err := syscall.Stat(r.path, &stat); err != nil {
+				// 文件切割，但新文件还没有生成
+				time.Sleep(1 * time.Second)
+			} else {
+				// 文件切割，重新打开文件
+				nowInode := stat.Ino
+				if nowInode == r.inode {
+					// 无新数据产生
+				} else {
+					// 文件切割，重新打开文件
+					r.fd.Close()
+					fd, err := os.Open(r.path)
+					if err != nil {
+						panic(fmt.Sprintf("Open file err: %s", err.Error()))
+					}
+					r.fd = fd
+					bf = bufio.NewReader(fd)
+					r.inode = nowInode
+				}
+			}
 			continue
 		} else if err != nil {
-			panic(fmt.Sprintf("ReadBytes err:%s", err.Error()))
+			log.Printf("ReadBytes err:%s", err.Error())
+			TypeMonitorChan <- TypeErrNum
+			continue
 		}
 		TypeMonitorChan <- TypeHandleLine
 		rc <- line[:len(line)-1]
@@ -141,36 +185,55 @@ func (r *ReadFromFile) Read(rc chan []byte) {
 }
 
 // 写入
-func (r *WriteToInfluxDB) Write(wc chan *Message) {
+func (w *WriteToInfluxDB) Write(wc chan *Message) {
 	// Create a new client using an InfluxDB server base URL and an authentication token
-	client := influxdb2.NewClient("http://localhost:8086", "xcQhIN_le_PbmjljLzX_F7ok-37HPe2w6QYN6RmX9KMrij7Y0fjjf0oom5JwVZy5djrJEAxVj8wt_7p9CXjXqA==")
-
-	for v := range wc {
+	client := influxdb2.NewClient("http://localhost:8086", w.influxToken)
+	for {
 		// Use blocking write client for writes to desired bucket
 		writeAPI := client.WriteAPIBlocking("simba", "dev")
-		tags := map[string]string{
-			"Path":   v.Path,
-			"Method": v.Method,
-			"Scheme": v.Scheme,
-			"Status": v.Status,
+		var count uint16
+	Fetch:
+		for v := range wc {
+			tags := map[string]string{
+				"Path":   v.Path,
+				"Method": v.Method,
+				"Scheme": v.Scheme,
+				"Status": v.Status,
+			}
+			fields := map[string]interface{}{
+				"UpstreamTime": v.UpstreamTime,
+				"RequestTime":  v.RequestTime,
+				"BytesSent":    v.BytesSent,
+			}
+			// Create point using full params constructor
+			p := influxdb2.NewPoint("nginx_log",
+				tags,
+				fields,
+				v.TimeLocal)
+			// write point immediately
+			err := writeAPI.WritePoint(context.Background(), p)
+			if err != nil {
+				log.Printf("influxdb NewPoint error: %s", err.Error())
+				TypeMonitorChan <- TypeErrNum
+				continue
+			}
+			log.Println("Write Success")
+			count++
+			if count > w.batch {
+				break Fetch
+			}
 		}
-		fields := map[string]interface{}{
-			"UpstreamTime": v.UpstreamTime,
-			"RequestTime":  v.RequestTime,
-			"BytesSent":    v.BytesSent,
+		var i uint8
+		for i = 1; i <= w.retry; i++ {
+			if health, err := client.Health(context.Background()); err != nil {
+				TypeMonitorChan <- TypeErrNum
+				log.Printf("influxdb Write error:%s, retry:%d, healthStatus:%s", err.Error(), i, health.Status)
+				time.Sleep(1 * time.Second)
+			} else {
+				log.Println(w.batch, "point has written")
+				break
+			}
 		}
-		// Create point using full params constructor
-		p := influxdb2.NewPoint("nginx_log",
-			tags,
-			fields,
-			v.TimeLocal)
-		// write point immediately
-		err := writeAPI.WritePoint(context.Background(), p)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		log.Println("Write Success")
 	}
 }
 
@@ -249,7 +312,7 @@ func main() {
 		path: "concurrent/error.log",
 	}
 	w := &WriteToInfluxDB{
-		influxDBDsn: "username",
+		influxToken: "xcQhIN_le_PbmjljLzX_F7ok-37HPe2w6QYN6RmX9KMrij7Y0fjjf0oom5JwVZy5djrJEAxVj8wt_7p9CXjXqA==",
 	}
 	lp := &LogProcess{
 		rc:    make(chan []byte, 200),
