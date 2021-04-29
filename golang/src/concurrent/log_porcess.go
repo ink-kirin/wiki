@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"regexp"
 	"strconv"
 	"strings"
@@ -129,17 +130,22 @@ func (m *Monitor) start(lp *LogProcess) {
 	}()
 
 	http.HandleFunc("/monitor", func(writer http.ResponseWriter, request *http.Request) {
-		m.data.RunTime = time.Since(m.startTime).String()
-		m.data.ReadChanLen = len(lp.rc)
-		m.data.WriteChanLen = len(lp.wc)
-		if len(m.tpsSli) >= 2 {
-			m.data.Tps = float64(m.tpsSli[1]-m.tpsSli[0]) / 5
-		}
-		ret, _ := json.MarshalIndent(m.data, "", "\t")
-		io.WriteString(writer, string(ret))
+		io.WriteString(writer, m.systemStatus(lp))
 	})
 
 	http.ListenAndServe(":9193", nil)
+}
+
+func (m *Monitor) systemStatus(lp *LogProcess) string {
+	m.data.RunTime = time.Since(m.startTime).String()
+	m.data.ReadChanLen = len(lp.rc)
+	m.data.WriteChanLen = len(lp.wc)
+	if len(m.tpsSli) >= 2 {
+		// return math.Trunc(float64(m.tpsSli[1]-m.tpsSli[0])/5*1e3+0.5) * 1e-3
+		m.data.Tps = float64(m.tpsSli[1]-m.tpsSli[0]) / 5
+	}
+	res, _ := json.MarshalIndent(m.data, "", "\t")
+	return string(res)
 }
 
 // 打开
@@ -333,4 +339,36 @@ func main() {
 		data:      SystemInfo{},
 	}
 	m.start(lp)
+
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGUSR1)
+	for s := range sigs {
+		switch s {
+		case syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT:
+			log.Println("capture exit signal:", s)
+			os.Exit(1)
+		case syscall.SIGUSR1: // 用户自定义信号
+			log.Println(m.systemStatus(lp))
+		default:
+			log.Println("capture other signal:", s)
+		}
+	}
+
+	/*
+	   sigs := make(chan os.Signal, 1)
+	   done := make(chan bool, 1)
+
+	   signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	   go func() {
+	       sig := <-sigs
+	       fmt.Println()
+	       fmt.Println(sig)
+	       done <- true
+	   }()
+
+	   fmt.Println("awaiting signal")
+	   <-done
+	   fmt.Println("exiting")
+	*/
 }
