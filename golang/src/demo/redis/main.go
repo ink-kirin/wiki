@@ -1,8 +1,8 @@
 package main
 
 import (
-	"demo/redis/rds"
 	"fmt"
+	"simbaGolang/demo/redis/rds"
 )
 
 func main() {
