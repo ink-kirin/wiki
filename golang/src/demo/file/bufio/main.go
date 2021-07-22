@@ -42,10 +42,10 @@ func writer(url string, str string) string {
 	// 写入文件
 	w := bufio.NewWriter(file)
 	for i := 0; i < 10; i++ {
-		w.WriteString("bufio写入字符串:" + str + strconv.Itoa(i) + "\r\n")
-		w.Write([]byte("bufio写入byte类型:" + str + strconv.Itoa(i) + "\r\n"))
+		_, _ = w.WriteString("bufio写入字符串:" + str + strconv.Itoa(i) + "\r\n")
+		_, _ = w.Write([]byte("bufio写入byte类型:" + str + strconv.Itoa(i) + "\r\n"))
 	}
-	w.Flush()
+	_ = w.Flush()
 	return "Success"
 }
 

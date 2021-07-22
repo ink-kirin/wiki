@@ -1,0 +1,12 @@
+Name: user.rpc
+ListenOn: 127.0.0.1:8080
+Etcd:
+  Hosts:
+  - 127.0.0.1:2379
+  Key: user.rpc
+Mysql:
+  DataSource: php_obj:OBJeq3suqmmceuix2020@tcp(rm-2zeki20a5mwuwy016jo.mysql.rds.aliyuncs.com:3306)/xqd_community?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai
+CacheRedis:
+  - Host: r-2ze2r7gdb9i4cim8r2pd.redis.rds.aliyuncs.com:6379
+    Pass: ldIla6cg2Bcdo_ggwb20
+    Type: node

@@ -1,46 +1,60 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
+
+// 整数转换二进制
+func convertToBin(n int) string {
+	if n == 0 {
+		return "00"
+	}
+	res := ""
+	for ; n > 0; n /= 2 {
+		l := n % 2
+		res = strconv.Itoa(l) + res
+	}
+	return res
+}
 
 func main() {
+
+	fmt.Println(
+		convertToBin(5),
+		convertToBin(17),
+	)
+
 	var ext = ".html"
 	switch ext {
 	case ".php":
-		fmt.Printf("text/php")
-		break
+		fmt.Println("text/php")
 	case ".css":
-		fmt.Printf("text/css")
-		break
+		fmt.Println("text/css")
 	default:
-		fmt.Printf("text")
-		break
+		fmt.Println("text")
 	}
 
 	var n = 5
 	switch n {
 	case 1, 3, 5, 7, 9:
-		fmt.Printf("奇数")
-		break
+		fmt.Println("奇数")
 	case 2, 4, 6, 8, 10:
-		fmt.Printf("偶数")
-		break
+		fmt.Println("偶数")
 	}
 
 	// 如果判断条件是表达式则switch不需要传值
-	var age = 20
+	var age = 32
 	switch {
 	case age < 22:
-		fmt.Printf("未成年")
-		break
+		fmt.Println("未成年")
 	case age >= 22 && age <= 48:
-		fmt.Printf("青年")
-		break
+		fmt.Println("青年")
 	case age > 48:
-		fmt.Printf("老年")
+		fmt.Println("老年")
 		// fallthrough // 穿透下层
-		break
 	default:
-		fmt.Printf("参数错误")
+		fmt.Println("参数错误")
 	}
 
 	for i := 1; i < 10; i++ {

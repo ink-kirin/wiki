@@ -1,0 +1,12 @@
+Name: user-api
+Host: 0.0.0.0
+Port: 8888
+Mysql:
+  DataSource: php_obj:OBJeq3suqmmceuix2020@tcp(rm-2zeki20a5mwuwy016jo.mysql.rds.aliyuncs.com:3306)/xqd_community?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai
+CacheRedis:
+  - Host: r-2ze2r7gdb9i4cim8r2pd.redis.rds.aliyuncs.com:6379
+    Pass: ldIla6cg2Bcdo_ggwb20
+    Type: node
+Auth:
+  AccessSecret: simba-simba
+  AccessExpire: 86400

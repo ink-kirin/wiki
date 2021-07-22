@@ -24,7 +24,7 @@ func writer(url string, str string) string {
 }
 
 // 复制文件
-func copy(src string, dst string) (err error) {
+func copyFile(src string, dst string) (err error) {
 	byteStr, err := ioutil.ReadFile(src)
 	if err != nil {
 		return err
@@ -48,7 +48,7 @@ func main() {
 
 	// 复制文件
 	u2 := "/Users/simba/test1.log"
-	err := copy(wurl, u2)
+	err := copyFile(wurl, u2)
 	if err != nil {
 		fmt.Println(err)
 	}
