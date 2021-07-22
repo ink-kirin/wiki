@@ -18,6 +18,7 @@ golang/src/gorobbs/
 # Docker
 docker-workspace/data
 docker-workspace/log
+docker-workspace/default.etcd
 
 # Python
 python/qxd
