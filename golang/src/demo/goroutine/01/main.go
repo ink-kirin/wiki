@@ -15,10 +15,42 @@ func test(num int) {
 }
 
 func main() {
-	for i := 0; i < 10; i++ {
-		wg.Add(1) // 设置计数器为1
-		go test(i)
+	//for i := 0; i < 10; i++ {
+	//	wg.Add(1) // 设置计数器为1
+	//	go test(i)
+	//}
+	//wg.Wait() // 阻塞等待计数器归零
+	//fmt.Println("结束")
+
+	numChan := make(chan int)
+	tagChan := make(chan int32)
+
+	go done(numChan, &wg)
+	go tagDone(tagChan, &wg)
+
+	for i := 0; i < 26; i++ {
+		wg.Add(1)
+		numChan <- i
 	}
-	wg.Wait() // 阻塞等待计数器归零
-	fmt.Println("结束")
+
+	for i := 'a'; i < 'z'; i++ {
+		wg.Add(1)
+		tagChan <- i
+	}
+
+	wg.Wait()
+}
+
+func done(n chan int, wg *sync.WaitGroup) {
+	for v := range n {
+		wg.Done()
+		fmt.Printf("v=%d\n", v)
+	}
+}
+
+func tagDone(t chan int32, wg *sync.WaitGroup) {
+	for iv := range t {
+		wg.Done()
+		fmt.Printf("iv=%c\n", iv)
+	}
 }

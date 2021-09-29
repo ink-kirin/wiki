@@ -1,0 +1,42 @@
+syntax = "v1"
+
+info(
+	title: "文件搜索服务"
+	desc: "查询文件详情，搜索文件"
+	author: "simba"
+	email: "923147568@qq.com"
+)
+
+type (
+	SearchReq {
+		ID int64 `json:"id"; form:"id"`
+	}
+	SearchRes {
+		ID      int64  `json:"id"`
+		UID     int64  `json:"uid"`
+		BaseUrl string `json:"base_url"`
+		Path    string `json:"path"`
+	}
+)
+
+type (
+	BatchReq {
+		UID      int64  `json:"uid,optional"`
+		MimeType string `json:"mime_type,optional"`
+		Status   int64  `json:"status,optional"`
+	}
+	BatchRes {
+		ID      int64  `json:"id"`
+		UID     int64  `json:"uid"`
+		BaseUrl string `json:"base_url"`
+		Path    string `json:"path"`
+	}
+)
+
+service search-api {
+	@handler SearchHandler
+	get /search(SearchReq) returns(SearchRes)
+	
+	@handler BatchSearchHandler
+	post /search/batch(BatchReq) returns(SearchRes)
+}

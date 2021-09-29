@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"common/response"
 
 	{{.ImportPackages}}
 )
@@ -16,10 +17,6 @@ func {{.HandlerName}}(ctx *svc.ServiceContext) http.HandlerFunc {
 
 		l := logic.New{{.LogicType}}(r.Context(), ctx)
 		{{if .HasResp}}resp, {{end}}err := l.{{.Call}}({{if .HasRequest}}req{{end}})
-		if err != nil {
-			httpx.Error(w, err)
-		} else {
-			{{if .HasResp}}httpx.OkJson(w, resp){{else}}httpx.Ok(w){{end}}
-		}
+		{{if .HasResp}}response.Response(w, resp, err){{else}}response.Response(w, nil, err){{end}}
 	}
 }

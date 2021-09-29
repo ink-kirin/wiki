@@ -27,6 +27,8 @@ type (
 		FindOne(id int64) (*XqdAlbumAnnex0, error)
 		Update(data XqdAlbumAnnex0) error
 		Delete(id int64) error
+		FindAll(sql string, param []interface{}) ([]*XqdAlbumAnnex0, error)
+		Collation(param []interface{}, rep map[string]interface{}) (string, []interface{})
 	}
 
 	defaultXqdAlbumAnnex0Model struct {
@@ -101,6 +103,49 @@ func (m *defaultXqdAlbumAnnex0Model) FindOne(id int64) (*XqdAlbumAnnex0, error) 
 	default:
 		return nil, err
 	}
+}
+
+func (m *defaultXqdAlbumAnnex0Model) FindAll(sql string, param []interface{}) ([]*XqdAlbumAnnex0, error) {
+	annex := make([]*XqdAlbumAnnex0, 0)
+	query := fmt.Sprintf("select %s from %s where "+sql, xqdAlbumAnnex0Rows, m.table)
+	err := m.QueryRowsNoCache(&annex, query, param...)
+	switch err {
+	case nil:
+		return annex, nil
+	case sqlc.ErrNotFound:
+		return nil, ErrNotFound
+	default:
+		return nil, err
+	}
+}
+
+func (m *defaultXqdAlbumAnnex0Model) Collation(param []interface{}, rep map[string]interface{}) (string, []interface{}) {
+	var querySql string
+	var arr []interface{}
+	for _, v := range param {
+		s := v.([]interface{})
+		querySql = querySql + " `" + s[0].(string) + "` " + s[1].(string) + " ? and"
+		arr = append(arr, s[2])
+	}
+	querySql = strings.TrimRight(querySql, "and")
+	orderBySql := "id desc"
+	if _, ok := rep["orderBy"]; !ok {
+		orderBySql = rep["orderBy"].(string)
+	}
+	limitSql := ""
+	var limitOk bool
+	var offsetOk bool
+	if _, ok := rep["limit"]; ok {
+		limitOk = true
+	}
+	if _, ok := rep["offset"]; ok {
+		offsetOk = true
+	}
+	if limitOk && offsetOk {
+		limitSql = "limit " + rep["limit"].(string) + " offset " + rep["offset"].(string)
+	}
+	querySql = querySql + " order by " + orderBySql + limitSql
+	return querySql, arr
 }
 
 func (m *defaultXqdAlbumAnnex0Model) Update(data XqdAlbumAnnex0) error {

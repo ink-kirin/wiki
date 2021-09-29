@@ -1,20 +1,29 @@
 package main
 
 import (
-	"project/Carwlers/engine"
-	"project/Carwlers/parser/douban"
-	"project/Carwlers/persist"
-	"project/Carwlers/scheduler"
+	"project/carwler/elastic"
 )
 
 func main() {
-	e := engine.ConcurrentEngine{
-		Scheduler:   &scheduler.QueuedScheduler{},
-		WorkerCount: 10,
-		ItemChan:    persist.ItemServer(),
+
+	doc := map[string]interface{}{
+		"name": "下次见面",
 	}
-	e.Run(engine.Request{
-		Url:        "https://book.douban.com/",
-		ParserFunc: douban.ParseTag,
-	})
+	e := elastic.ElasticParam{
+		IndexName: "douban",
+		Doc:       doc,
+		ID:        "1",
+	}
+	e.Search()
+	return
+
+	//e := engine.ConcurrentEngine{
+	//	Scheduler:   &scheduler.QueuedScheduler{},
+	//	WorkerCount: 10,
+	//	ItemChan:    persist.ItemServer(),
+	//}
+	//e.Run(engine.Request{
+	//	Url:        "https://book.douban.com/",
+	//	ParserFunc: douban.ParseTag,
+	//})
 }

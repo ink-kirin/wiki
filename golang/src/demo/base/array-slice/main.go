@@ -1,6 +1,10 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"reflect"
+	"strings"
+)
 
 func main() {
 	// 数组的长度是类型的一部分
@@ -132,4 +136,63 @@ func main() {
 	var q2 = []int{1, 2, 3, 4, 5, 6}
 	q2 = append(q2[:2], q2[3:]...)
 	fmt.Println(q2) // [1 2 4 5 6]
+
+	// [9,8,7,6,5,4]倒序  选择排序
+	var str = []int{9, 8, 7, 6, 5, 4}
+	for i := 0; i < len(str); i++ {
+		for j := i + 1; j < len(str); j++ {
+			if str[i] > str[j] {
+				temp := str[i]
+				str[i] = str[j]
+				str[j] = temp
+			}
+		}
+	}
+	fmt.Println(str)
+
+	// 冒泡排序
+	var ss = []int{9, 8, 7, 6, 5, 4}
+	for i := 0; i < len(ss); i++ {
+		for j := 0; j < len(ss)-1-i; j++ {
+			if ss[j] > ss[j+1] {
+				temp := ss[j]
+				ss[j] = ss[j+1]
+				ss[j+1] = temp
+			}
+		}
+	}
+	fmt.Println(ss)
+
+	//strSql := "`uid` = ? limit 10 offset 0"
+	var sql string
+	var param []interface{}
+	param = append(param,
+		[]interface{}{"id", "=", 100},
+		[]interface{}{"name", "like", "lil"},
+		[]interface{}{"uid", "in", []int{2, 23, 45, 100, 109}})
+	var args []interface{}
+	for _, v := range param {
+		s := v.([]interface{})
+		sql = sql + " `" + s[0].(string) + "` " + s[1].(string) + " ? and"
+		args = append(args, s[2])
+	}
+	sql = strings.TrimRight(sql, "and")
+	sql = sql + "order by id desc"
+	fmt.Println(sql)
+	fmt.Println(args)
+	fmt.Println(reflect.TypeOf(args))
+
+	var i map[string]interface{}
+	i = make(map[string]interface{})
+	i["orderBy"] = "id desc"
+	i["limit"] = 10
+	i["offset"] = 1
+	fmt.Println(reflect.TypeOf(i))
+	test(1, i)
+}
+
+func test(param int, m map[string]interface{}) {
+	fmt.Println(param)
+	_, ok := m["size"]
+	fmt.Println(ok)
 }
