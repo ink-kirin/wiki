@@ -13,12 +13,16 @@ func newTime() string {
 	hour := timeObj.Hour()     // 时
 	minute := timeObj.Minute() // 分
 	second := timeObj.Second() // 秒
-	return fmt.Sprintf("%d-%02d-%02d %02d:%02d:%02d", year, month, day, hour, minute, second)
+	return fmt.Sprintf("%4d-%02d-%02d %02d:%02d:%02d", year, month, day, hour, minute, second)
 	// 注：%02中的2表示宽度，如果整数不够2位就补位0
 }
 
 func main() {
 	fmt.Printf("%s -- %[1]T \n", newTime())
+
+	fmt.Println(time.Now().Format("02 Jan 2006 15:04"))
+
+	fmt.Println(time.Now().Format("2006 1 02"))
 
 	// 使用time内置方法
 	/*
